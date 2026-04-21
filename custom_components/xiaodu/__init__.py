@@ -35,7 +35,7 @@ async def async_setup_entry(
     # HA 2026 下加强了配置校验，做一次兜底避免历史数据缺失导致启动失败。
     appliance_types = entry.data.get("applianceTypes", [])
     # Setup devices based on the selected devices from the config flow
-    for index, device_info in enumerate(entry.data.get("devices", [])):
+    for device_info in entry.data.get("devices", []):
         applianceId = device_info["applianceId"]
         houseId = device_info["houseId"]
         cookie = device_info["cookie"]
@@ -44,13 +44,6 @@ async def async_setup_entry(
             if isinstance(item, dict) and item.get("applianceId") == applianceId:
                 appliance_type = item.get("applianceTypes", [])
                 break
-        if not appliance_type and index < len(appliance_types):
-            legacy_item = appliance_types[index]
-            if isinstance(legacy_item, dict):
-                appliance_type = legacy_item.get("applianceTypes", [])
-                _LOGGER.debug(
-                    "Use legacy appliance type fallback for applianceId=%s", applianceId
-                )
         if not appliance_type:
             _LOGGER.warning(
                 "Missing applianceTypes for applianceId=%s, fallback to empty list",

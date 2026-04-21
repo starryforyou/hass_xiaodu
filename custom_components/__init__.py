@@ -1,1 +1,1 @@
-"""Shared package marker for custom components used by tests."""
+"""Package marker for local custom components."""
