@@ -48,6 +48,14 @@ async def async_setup_entry(
             legacy_item = appliance_types[index]
             if isinstance(legacy_item, dict):
                 appliance_type = legacy_item.get("applianceTypes", [])
+                _LOGGER.debug(
+                    "Use legacy appliance type fallback for applianceId=%s", applianceId
+                )
+        if not appliance_type:
+            _LOGGER.warning(
+                "Missing applianceTypes for applianceId=%s, fallback to empty list",
+                applianceId,
+            )
         hass.data[DOMAIN][entry.entry_id][applianceId] = XiaoDuAPI(
             applianceId=applianceId,
             houseId=houseId,
