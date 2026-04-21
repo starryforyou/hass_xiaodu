@@ -12,7 +12,7 @@ from homeassistant.const import UnitOfTemperature, ATTR_TEMPERATURE
 
 _LOGGER = logging.getLogger(__name__)
 
-# HA 2026 中旧风速常量已逐步淘汰，统一使用标准字符串。
+# HA 2026 中旧风速常量已弃用，统一使用标准字符串。
 FAN_LOW = "low"
 FAN_MEDIUM = "medium"
 FAN_HIGH = "high"
