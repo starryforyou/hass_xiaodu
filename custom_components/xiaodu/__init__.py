@@ -3,7 +3,6 @@ import logging
 from homeassistant import core, config_entries
 from homeassistant.const import Platform
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .ApplianceTypes import ApplianceTypes
 from .api.XiaoDuAPI import XiaoDuAPI
 from .const import DOMAIN
 
@@ -35,22 +34,26 @@ async def async_setup_entry(
     session = async_get_clientsession(hass)
     # HA 2026 下加强了配置校验，做一次兜底避免历史数据缺失导致启动失败。
     appliance_types = entry.data.get("applianceTypes", [])
-    appliance_type_map = {
-        item.get("applianceId"): item.get("applianceTypes", [])
-        for item in appliance_types
-        if isinstance(item, dict)
-    }
     # Setup devices based on the selected devices from the config flow
-    for device_info in entry.data.get("devices", []):
+    for index, device_info in enumerate(entry.data.get("devices", [])):
         applianceId = device_info["applianceId"]
         houseId = device_info["houseId"]
         cookie = device_info["cookie"]
+        appliance_type = []
+        for item in appliance_types:
+            if isinstance(item, dict) and item.get("applianceId") == applianceId:
+                appliance_type = item.get("applianceTypes", [])
+                break
+        if not appliance_type and index < len(appliance_types):
+            legacy_item = appliance_types[index]
+            if isinstance(legacy_item, dict):
+                appliance_type = legacy_item.get("applianceTypes", [])
         hass.data[DOMAIN][entry.entry_id][applianceId] = XiaoDuAPI(
             applianceId=applianceId,
             houseId=houseId,
             cookie=cookie,
             session=session,
-            applianceTypes=appliance_type_map.get(applianceId, []),
+            applianceTypes=appliance_type,
         )
     # 更新配置 由async_update_entry触发
     if not entry.update_listeners:

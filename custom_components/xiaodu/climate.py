@@ -50,7 +50,8 @@ class XiaoDuClimate(ClimateEntity):
     def __init__(self, api: XiaoDuAPI, name: str, if_on: bool, detail):
         self._api = api
         self._attr_name = name
-        self._attr_unique_id = f"{api.applianceId}_climate"
+        # 保持历史 unique_id，避免升级后生成重复实体。
+        self._attr_unique_id = f"{api.applianceId}_cover"
         # 支持的功能 小度 只能 开 关 温度 模式 风速
         self._attr_supported_features = (
             ClimateEntityFeature.TURN_ON
