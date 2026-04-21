@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 class XiaoduConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # 2026 版本要求 config flow 显式声明版本字段，便于后续迁移。
     VERSION = 1
-    MINOR_VERSION = 1
+    MINOR_VERSION = 0
 
     def __init__(self):
         self.cookie = None
