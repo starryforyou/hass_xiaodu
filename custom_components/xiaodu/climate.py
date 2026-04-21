@@ -3,11 +3,22 @@ import logging
 from homeassistant import core
 from . import ApplianceTypes, XiaoDuAPI
 from .const import DOMAIN
-from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, FAN_LOW, FAN_MEDIUM, FAN_HIGH, \
-    HVACMode, FAN_MIDDLE, FAN_FOCUS, FAN_DIFFUSE
+from homeassistant.components.climate import (
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACMode,
+)
 from homeassistant.const import UnitOfTemperature, ATTR_TEMPERATURE
 
 _LOGGER = logging.getLogger(__name__)
+
+# HA 2026 中旧风速常量已弃用，统一使用标准字符串。
+FAN_LOW = "low"
+FAN_MEDIUM = "medium"
+FAN_HIGH = "high"
+FAN_MIDDLE = "middle"
+FAN_FOCUS = "focus"
+FAN_DIFFUSE = "diffuse"
 
 
 async def async_setup_entry(hass: core.HomeAssistant, config_entry, async_add_entities):
@@ -23,13 +34,15 @@ async def async_setup_entry(hass: core.HomeAssistant, config_entry, async_add_en
         detail = await aapi.get_detail()
         if detail == []:
             continue
-        name = detail['appliance']['friendlyName']
-        if_onS = str(detail['appliance']['stateSetting']['turnOnState']['value']).lower()
+        name = detail["appliance"]["friendlyName"]
+        if_onS = str(
+            detail["appliance"]["stateSetting"]["turnOnState"]["value"]
+        ).lower()
         if if_onS == "on":
             if_on = True
         else:
             if_on = False
-        entities.append(XiaoDuClimate(api[device_id], name, if_on, detail['appliance']))
+        entities.append(XiaoDuClimate(api[device_id], name, if_on, detail["appliance"]))
     async_add_entities(entities, update_before_add=True)
 
 
@@ -37,20 +50,33 @@ class XiaoDuClimate(ClimateEntity):
     def __init__(self, api: XiaoDuAPI, name: str, if_on: bool, detail):
         self._api = api
         self._attr_name = name
+        # 保持历史 unique_id，避免升级后生成重复实体。
         self._attr_unique_id = f"{api.applianceId}_cover"
         # 支持的功能 小度 只能 开 关 温度 模式 风速
         self._attr_supported_features = (
-                ClimateEntityFeature.TURN_ON |
-                ClimateEntityFeature.TURN_OFF |
-                ClimateEntityFeature.TARGET_TEMPERATURE |
-                ClimateEntityFeature.FAN_MODE
+            ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TURN_OFF
+            | ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.FAN_MODE
         )
         # 根据平台的空调不同 有5档风的三挡的 兼容最低版本 统一 低中高
         self._attr_fan_modes = [
-            FAN_LOW, FAN_MEDIUM, FAN_HIGH, FAN_MIDDLE, FAN_FOCUS, FAN_DIFFUSE]
+            FAN_LOW,
+            FAN_MEDIUM,
+            FAN_HIGH,
+            FAN_MIDDLE,
+            FAN_FOCUS,
+            FAN_DIFFUSE,
+        ]
         # 模式 支持 制热 制冷 松风 自动 除湿
         self._attr_hvac_modes = [
-            HVACMode.COOL, HVACMode.HEAT, HVACMode.DRY, HVACMode.FAN_ONLY, HVACMode.OFF, HVACMode.AUTO]
+            HVACMode.COOL,
+            HVACMode.HEAT,
+            HVACMode.DRY,
+            HVACMode.FAN_ONLY,
+            HVACMode.OFF,
+            HVACMode.AUTO,
+        ]
         # 把温度单位 为 摄氏度
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         # 设置最低和最大 小度返回的不准确 为兼容所有 设置为16-32
@@ -72,15 +98,12 @@ class XiaoDuClimate(ClimateEntity):
             7: FAN_DIFFUSE,
             8: FAN_DIFFUSE,
             9: FAN_DIFFUSE,
-            10: FAN_DIFFUSE
+            10: FAN_DIFFUSE,
         }
-        self._ac_mode_lookup = {
-            "dry": "dehumidification",
-            "fan_only": "fan"
-        }
+        self._ac_mode_lookup = {"dry": "dehumidification", "fan_only": "fan"}
         self._ac_mode_lookup2 = {
             "dehumidification": HVACMode.DRY,
-            "fan": HVACMode.FAN_ONLY
+            "fan": HVACMode.FAN_ONLY,
         }
         self.detail = None
 
@@ -125,8 +148,8 @@ class XiaoDuClimate(ClimateEntity):
             flag = await self._api.set_ac_off()
         else:
             # 先开机 如果是关机状态 这样设置模式就直接开机了
-            detail = self.detail['appliance']
-            turnOnState = detail['stateSetting']['turnOnState']['value']
+            detail = self.detail["appliance"]
+            turnOnState = detail["stateSetting"]["turnOnState"]["value"]
             if turnOnState.lower() == "off":
                 flag = await self._api.set_ac_on()
             flag = await self._api.set_ac_mode(mode)
@@ -134,23 +157,25 @@ class XiaoDuClimate(ClimateEntity):
 
     async def async_update(self):
         self.detail = await self._api.get_detail()
-        detail = self.detail['appliance']
-        stateSetting = detail['stateSetting']
-        if 'fanSpeed' not in stateSetting:
+        detail = self.detail["appliance"]
+        stateSetting = detail["stateSetting"]
+        if "fanSpeed" not in stateSetting:
             fanSpeed = FAN_MEDIUM
         else:
-            fanSpeed = stateSetting['fanSpeed']['value']
-        if 'temperature' not in stateSetting:
+            fanSpeed = stateSetting["fanSpeed"]["value"]
+        if "temperature" not in stateSetting:
             temperature = 26
         else:
-            temperature = stateSetting['temperature']['value']
-        if 'mode' not in stateSetting:
-            mode = 'cool'
+            temperature = stateSetting["temperature"]["value"]
+        if "mode" not in stateSetting:
+            mode = "cool"
         else:
-            mode = stateSetting['mode']['value']
-        turnOnState = detail['stateSetting']['turnOnState']['value']
-        if turnOnState.lower() == 'on':
-            self._attr_hvac_mode = self._ac_mode_lookup2.get(str(mode).lower(), str(mode).lower())
+            mode = stateSetting["mode"]["value"]
+        turnOnState = detail["stateSetting"]["turnOnState"]["value"]
+        if turnOnState.lower() == "on":
+            self._attr_hvac_mode = self._ac_mode_lookup2.get(
+                str(mode).lower(), str(mode).lower()
+            )
         else:
             self._attr_hvac_mode = HVACMode.OFF
 

@@ -1,3 +1,3 @@
-DOMAIN = "baidu"
+DOMAIN = "xiaodu"
 
 CONF_BAIDUID_COOKIE = "BAIDUID_COOKIE"

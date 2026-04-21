@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -14,6 +13,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class XiaoduConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    # 2026 版本要求 config flow 显式声明版本字段，便于后续迁移。
+    VERSION = 1
+    MINOR_VERSION = 0
+
     def __init__(self):
         self.cookie = None
         self._home_id_list = None
@@ -22,7 +25,7 @@ class XiaoduConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(
-            config_entry: ConfigEntry,
+        config_entry: ConfigEntry,
     ):
         """Create the options flow."""
         return OptionsFlowHandler(config_entry)
@@ -49,7 +52,7 @@ class XiaoduConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             loginFlag = await xiaoduApi.checkSession()
             _LOGGER.info("校验结果: %s", loginFlag)
             if not loginFlag[0]:
-                form['errors']['base'] = loginFlag[1]
+                form["errors"]["base"] = loginFlag[1]
                 return form
             self._home_id_list = await xiaoduApi.get_home_id_list()
 
@@ -81,27 +84,22 @@ class XiaoduConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             devices = []
             for i in applianceIds:
                 devices.append(
-                    {"applianceId": i,
-                     "houseId": self.home_id,
-                     "cookie": self.cookie
-                     }
+                    {"applianceId": i, "houseId": self.home_id, "cookie": self.cookie}
                 )
             home_name = self._home_id_list[self.home_id]
             # 这里的cookie都是通用的 一个家庭 找出所选设备的信息 将设备类型传入
             session = async_get_clientsession(self.hass)
             xiaoduApi = XiaoDuAPI(cookie=self.cookie, session=session)
             detail = await xiaoduApi.get_details(self.home_id, applianceIds)
-            applianceTypes = detail['appliances']
+            applianceTypes = detail["appliances"]
             return self.async_create_entry(
                 title=f"XiaoDu：{home_name}",
-                data={"devices": devices, "applianceTypes": applianceTypes}
+                data={"devices": devices, "applianceTypes": applianceTypes},
             )
 
         data_schema = vol.Schema(
             {
-                vol.Required("device_ids"): cv.multi_select(
-                    self._device_wifi_id_dict
-                ),
+                vol.Required("device_ids"): cv.multi_select(self._device_wifi_id_dict),
             }
         )
         return self.async_show_form(step_id="device", data_schema=data_schema)
@@ -109,7 +107,9 @@ class XiaoduConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry):
-        pass
+        self.config_entry = config_entry
+        self.cookie = None
+        self._home_id_list = None
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
@@ -150,17 +150,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             loginFlag = await xiaoduApi.checkSession()
             _LOGGER.info("校验结果: %s", loginFlag)
             if not loginFlag[0]:
-                form['errors']['base'] = loginFlag[1]
+                form["errors"]["base"] = loginFlag[1]
                 return form
             self._home_id_list = await xiaoduApi.get_home_id_list()
             nData = {**self.config_entry.data}
-            for i, k in enumerate(nData['devices']):
-                nData['devices'][i]['cookie'] = self.cookie
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=nData
-            )
-            return self.async_create_entry(
-                title=self.config_entry.title,
-                data=nData
-            )
+            for i, k in enumerate(nData["devices"]):
+                nData["devices"][i]["cookie"] = self.cookie
+            self.hass.config_entries.async_update_entry(self.config_entry, data=nData)
+            return self.async_create_entry(title=self.config_entry.title, data=nData)
         return form
